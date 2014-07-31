@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="horizontal"
+    android:padding="5sp">
+
+    <ImageView
+        android:id="@+id/avatar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/no_avatar"
+        android:adjustViewBounds="true"
+        android:maxHeight="48dp"
+        android:maxWidth="48dp"
+
+        android:layout_marginRight="10sp"
+        android:contentDescription="@string/child_image_desc"
+        />
+    <TextView
+        android:id="@+id/lblListChildName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/avatar"
+        />
+    <TextView
+        android:id="@+id/lblListAge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/avatar"
+        android:layout_below="@id/lblListChildName"
+        />
+
+</RelativeLayout>

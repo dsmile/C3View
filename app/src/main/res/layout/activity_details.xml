@@ -1,0 +1,47 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.dsmile.cowoview.DetailsActivity"
+    android:orientation="horizontal"
+    android:padding="10sp">
+
+<ImageView
+    android:id="@+id/detailsAvatar"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:src="@drawable/no_avatar"
+    android:adjustViewBounds="true"
+    android:layout_marginBottom="10sp"
+    android:contentDescription="@string/child_image_desc"
+    />
+
+<LinearLayout
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="5sp"
+    >
+
+    <TextView
+        android:id="@+id/lblDetailsName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Виталий Петров" />
+    <TextView
+        android:id="@+id/lblDetailsBirthday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="22.11.1987 г." />
+    <TextView
+        android:id="@+id/lblDetailsAge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="27 лет" />
+    <TextView
+        android:id="@+id/lblDetailsSpeciality"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Менеджер, Программист" />
+</LinearLayout>
+</LinearLayout>

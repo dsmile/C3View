@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">C3View</string>
+    <string name="action_settings">Настройки</string>
+    <string name="action_update">Загрузить</string>
+    <string name="child_image_desc">Фото</string>
+    <string name="update_db_start">Загрузка данных</string>
+    <string name="update_db_error">Ошибка загрузки</string>
+    <string name="update_db_end">Данные загружены</string>
+    <string name="not_available">-</string>
+    <string name="title_activity_details">Подробно</string>
+
+</resources>
