@@ -2,24 +2,24 @@ package com.mdiakonov.c3view;
 
 import android.content.Context;
 import android.database.Cursor;
+
 import android.os.AsyncTask;
 import android.os.Bundle;
+
 import android.support.v4.app.LoaderManager;
-import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.widget.SimpleCursorAdapter;
 
-import android.text.TextUtils;
-import android.util.Log;
+import java.lang.reflect.Array;
+import java.util.List;
 import android.view.Menu;
-
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Locale;
-
 
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -30,6 +30,7 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,9 +38,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class MainActivity extends FragmentActivity implements LoaderManager.LoaderCallbacks <Cursor> {
+import android.util.Log;
+
+public class MainActivity extends FragmentActivity implements LoaderManager.LoaderCallbacks<Cursor> {
+    final static int SPECIALTY_LOADER_ID = 2;
+    // Callback'и для SPECIALTY_LOADER_ID
+    private LoaderManager.LoaderCallbacks<Cursor> mSpecialtyListCallbacks;
+    // Адаптер для данных табов
     SectionsPagerAdapter mSectionsPagerAdapter;
+
     ViewPager mViewPager;
+    ListAdapter sectionsListAdapter;
+
     WorkersDbAdapter dbHelper;
     // if run on phone, isSinglePane = true,  if run on tablet, isSinglePane = false
     static boolean isSinglePane;
@@ -59,6 +69,10 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
             UpdateDatabase();
         }
 
+        mSpecialtyListCallbacks = this;
+        LoaderManager lm = getSupportLoaderManager();
+        lm.initLoader(SPECIALTY_LOADER_ID, null, mSpecialtyListCallbacks);
+
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the app.
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
@@ -66,7 +80,6 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.pager);
         mViewPager.setAdapter(mSectionsPagerAdapter);
-
     }
 
     @Override
@@ -85,6 +98,10 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
         if (id == R.id.action_update) {
             UpdateDatabase();
             return true;
+        } else if (id == R.id.action_delete) {
+            // TODO при очистке таблиц не обновляются вкладки
+            dbHelper.ClearTables();
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -95,28 +112,94 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
      */
     public class SectionsPagerAdapter extends FragmentPagerAdapter {
 
+        private int pageCount;
+        private Cursor cursor = null;
+
         public SectionsPagerAdapter(FragmentManager fm) {
             super(fm);
         }
 
         @Override
         public Fragment getItem(int position) {
-            Fragment fragment = new WorkersListFragment();
-            Bundle args = new Bundle();
-            args.putInt("POS", position);
-            fragment.setArguments(args);
-            return fragment;
+            if (cursor != null) {
+                Fragment fragment = new WorkersListFragment();
+                Bundle args = new Bundle();
+                cursor.moveToPosition(position);
+                args.putInt("SPEC_ID", cursor.getInt(1));
+                fragment.setArguments(args);
+                return fragment;
+            } else {
+                return null;
+            }
         }
 
         @Override
         public int getCount() {
-            return 2;
+            if (cursor != null) {
+                return cursor.getCount();
+            } else {
+                return 0;
+            }
+            // return pageCount;
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
+            if (cursor != null) {
+                //            return "Менеджеры";
+                cursor.moveToPosition(position);
+                return cursor.getString(0);
+            } else {
+                return "Err";
+            }
+        }
 
-            return "Менеджеры";
+        public void SetPageInfo(Cursor data) {
+            cursor = data;
+        }
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        // Now create and return a CursorLoader that will take care of
+        // creating a Cursor for the data being displayed.
+        return new MyGroupCursorLoader(this, dbHelper);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor result) {
+        // A switch-case is useful when dealing with multiple Loaders/IDs
+        switch (loader.getId()) {
+            case SPECIALTY_LOADER_ID:
+                // The asynchronous load is complete and the data
+                // is now available for use. Only now can we associate
+                // the queried Cursor with the SimpleCursorAdapter.
+                //mListAdapter.swapCursor(cursor);
+                mSectionsPagerAdapter.SetPageInfo(result);
+                mSectionsPagerAdapter.notifyDataSetChanged();
+                break;
+        }
+        // The listview now displays the queried data.
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        // For whatever reason, the Loader's data is now unavailable.
+        // Remove any references to the old data by replacing it with
+        // a null Cursor.
+        // mListAdapter.swapCursor(null);
+    }
+
+    static class MyGroupCursorLoader extends CursorLoader {
+        WorkersDbAdapter db;
+        public MyGroupCursorLoader(Context context, WorkersDbAdapter db) {
+            super(context);
+            this.db = db;
+        }
+
+        @Override
+        public Cursor loadInBackground() {
+            return db.getSpecialtyData();
         }
     }
 
@@ -232,36 +315,6 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
         }
     }
 
-
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        return new MyGroupCursorLoader(this, dbHelper);
-    }
-
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        // Swap the new cursor in.  (The framework will take care of closing the
-        // old cursor once we return.)
-    }
-
-    public void onLoaderReset(Loader<Cursor> loader) {
-        // This is called when the last Cursor provided to onLoadFinished()
-        // above is about to be closed.  We need to make sure we are no
-        // longer using it.
-    }
-
-
-
-    static class MyGroupCursorLoader extends CursorLoader {
-        WorkersDbAdapter db;
-        public MyGroupCursorLoader(Context context, WorkersDbAdapter db) {
-            super(context);
-            this.db = db;
-        }
-
-        @Override
-        public Cursor loadInBackground() {
-            return db.getSpecialtyData();
-        }
-    }
 
     protected void UpdateListView() {
         Loader<Cursor> loader = getSupportLoaderManager().getLoader(-1);

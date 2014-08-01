@@ -1,52 +1,47 @@
 package com.mdiakonov.c3view;
 
+import com.koushikdutta.urlimageviewhelper.UrlImageViewCallback;
+import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
+
+import android.app.Activity;
+
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.os.Bundle;
-import android.app.FragmentTransaction;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.app.Fragment;
+
 import android.support.v4.app.ListFragment;
-import android.support.v4.app.FragmentManager;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.SearchViewCompat;
-import android.support.v4.widget.SearchViewCompat.OnQueryTextListenerCompat;
+
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MenuInflater;
 import android.view.View;
 import android.view.animation.OvershootInterpolator;
 import android.view.animation.ScaleAnimation;
-import android.widget.ArrayAdapter;
+
+import android.widget.TextView;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.view.Menu;
-import android.view.MenuItem;
 
-import android.view.MenuInflater;
-import android.widget.SearchView;
-import android.view.LayoutInflater;
-import android.view.ViewGroup;
 import android.database.Cursor;
+import android.os.Bundle;
 import android.text.TextUtils;
+import android.graphics.Bitmap;
 import android.util.Log;
-import android.app.Activity;
-import android.widget.TextView;
-
-import com.koushikdutta.urlimageviewhelper.UrlImageViewCallback;
-import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
 
 public /*static*/ class WorkersListFragment extends ListFragment
         implements LoaderManager.LoaderCallbacks<Cursor>{
-    // This is the Adapter being used to display the list's data.
-    SimpleCursorAdapter mAdapter;
-
-    // If non-null, this is the current filter the user has provided.
+    // Идентификатор Loader для загрузки элементов списка
+    private static final int LIST_LOADER_ID = 1;
+    // Callback'и для LIST_LOADER_ID
+    private LoaderManager.LoaderCallbacks<Cursor> mListCallbacks;
+    // Адаптер для данных списка
+    SimpleCursorAdapter mListAdapter;
+    // Если не пустая строка (или null) - фильтр по именам работников в списке
     String mCurFilter;
 
     Context context;
@@ -63,9 +58,8 @@ public /*static*/ class WorkersListFragment extends ListFragment
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
-        // Give some text to display if there is no data.  In a real
-        // application this would come from a resource.
-        setEmptyText("Не найдено");
+        // Текст, когда список пуст
+        setEmptyText(getResources().getText(R.string.no_data));
 
         // We have a menu item to show in action bar.
         setHasOptionsMenu(true);
@@ -73,12 +67,20 @@ public /*static*/ class WorkersListFragment extends ListFragment
         dbHelper = new WorkersDbAdapter(context);
         dbHelper.open();
 
-        // Create an empty adapter we will use to display the loaded data.
-        mAdapter = new SimpleCursorAdapter(context,
+        // список названий необходимых столбцов из БД
+        String[] listDataColumns = new String[] { WorkersDbAdapter.F_NAME, WorkersDbAdapter.L_NAME,
+                WorkersDbAdapter.BIRTHDAY, WorkersDbAdapter.AVATR_URL};
+
+        // Initialize the adapter. Note that we pass a 'null' Cursor as the
+        // third argument. We will pass the adapter a Cursor only when the
+        // data has finished loading for the first time (i.e. when the
+        // LoaderManager delivers the data to onLoadFinished). Also note
+        // that we have passed the '0' flag as the last argument. This
+        // prevents the adapter from registering a ContentObserver for the
+        // Cursor (the CursorLoader will do this for us!).
+        mListAdapter = new SimpleCursorAdapter(context,
                 R.layout.list_child, null,
-                new String[] { WorkersDbAdapter.F_NAME, WorkersDbAdapter.L_NAME, WorkersDbAdapter.BIRTHDAY,
-                               WorkersDbAdapter.AVATR_URL},
-                null, 0) {
+                listDataColumns, null, 0) {
                     @Override
                     public void bindView (View view, Context context, Cursor cursor) {
                         TextView txtListAge = (TextView) view.findViewById(R.id.lblListAge);
@@ -109,19 +111,31 @@ public /*static*/ class WorkersListFragment extends ListFragment
                         );
                     }
                 };
+        // Associate the (now empty) adapter with the ListView.
+        setListAdapter(mListAdapter);
 
-        setListAdapter(mAdapter);
+        // The Activity (which implements the LoaderCallbacks<Cursor>
+        // interface) is the callbacks object through which we will interact
+        // with the LoaderManager. The LoaderManager uses this object to
+        // instantiate the Loader and to notify the client when data is made
+        // available/unavailable.
+        mListCallbacks = this;
 
-        // Prepare the loader.  Either re-connect with an existing one,
-        // or start a new one.
-        getLoaderManager().initLoader(0,  getArguments(), this);
+        // Initialize the Loader with id 'LIST_LOADER_ID' and callbacks 'mListCallbacks'.
+        // If the loader doesn't already exist, one is created. Otherwise,
+        // the already created Loader is reused. In either case, the
+        // LoaderManager will manage the Loader across the Activity/Fragment
+        // lifecycle, will receive any new loads once they have completed,
+        // and will report this new data back to the 'mCallbacks' object.
+        LoaderManager lm = getLoaderManager();
+        lm.initLoader(LIST_LOADER_ID,  getArguments(), mListCallbacks);
     }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         // Place an action bar item for searching.
 
-        MenuItem item = menu.add("Поиск")
+        MenuItem item = menu.add(R.string.search)
                 .setIcon(android.R.drawable.ic_menu_search);
         MenuItemCompat.setShowAsAction(item, MenuItemCompat.SHOW_AS_ACTION_IF_ROOM);
         View sv = SearchViewCompat.newSearchView(context);
@@ -158,7 +172,7 @@ public /*static*/ class WorkersListFragment extends ListFragment
         // Insert desired behavior here.
         Log.i("FragmentComplexList", "Item clicked: " + id);
         //Cursor cursor = mAdapter.getItem(position);
-        Cursor cursor = mAdapter.getCursor();
+        Cursor cursor = mListAdapter.getCursor();
         int workerId = cursor.getInt(0);
 
         Cursor specs = dbHelper.getWorkerSpecialities(workerId);
@@ -179,26 +193,34 @@ public /*static*/ class WorkersListFragment extends ListFragment
         startActivity(newActivity);
     }
 
+    @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-
-        MyChildCursorLoader loader;
-        loader = new MyChildCursorLoader(context, dbHelper, (args.getInt("POS") + 101), args.getString("FILTER"));
         // Now create and return a CursorLoader that will take care of
         // creating a Cursor for the data being displayed.
-        return loader;
+        return new MyChildCursorLoader(context, dbHelper,
+                args.getInt("SPEC_ID"), args.getString("FILTER"));
     }
 
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        // Swap the new cursor in.  (The framework will take care of closing the
-        // old cursor once we return.)
-        mAdapter.swapCursor(data);
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+        // A switch-case is useful when dealing with multiple Loaders/IDs
+        switch (loader.getId()) {
+            case LIST_LOADER_ID:
+                // The asynchronous load is complete and the data
+                // is now available for use. Only now can we associate
+                // the queried Cursor with the SimpleCursorAdapter.
+                mListAdapter.swapCursor(cursor);
+                break;
+        }
+        // The listview now displays the queried data.
     }
 
+    @Override
     public void onLoaderReset(Loader<Cursor> loader) {
-        // This is called when the last Cursor provided to onLoadFinished()
-        // above is about to be closed.  We need to make sure we are no
-        // longer using it.
-        mAdapter.swapCursor(null);
+        // For whatever reason, the Loader's data is now unavailable.
+        // Remove any references to the old data by replacing it with
+        // a null Cursor.
+        mListAdapter.swapCursor(null);
     }
 
 
