@@ -11,7 +11,6 @@ import android.support.v4.content.Loader;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.widget.SimpleCursorAdapter;
 
-import java.lang.reflect.Array;
 import java.util.List;
 import android.view.Menu;
 
@@ -24,14 +23,18 @@ import java.net.URL;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.support.v4.widget.DrawerLayout;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ListAdapter;
 import android.widget.TextView;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -47,18 +50,45 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
     // Адаптер для данных табов
     SectionsPagerAdapter mSectionsPagerAdapter;
 
-    ViewPager mViewPager;
     ListAdapter sectionsListAdapter;
+    SimpleCursorAdapter mDrawerAdapter;
+
+    private String[] mPlanetTitles;
+    private DrawerLayout mDrawerLayout;
+    private ListView mDrawerList;
 
     WorkersDbAdapter dbHelper;
+
     // if run on phone, isSinglePane = true,  if run on tablet, isSinglePane = false
     static boolean isSinglePane;
     private static final String TAG = "MainActivity";
+    PagerWithListFragment myListFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Log.w("HEH", "Phone");
+
+        View v = findViewById(R.id.phone_container);
+        if(v == null){
+            //it's run on tablet
+            isSinglePane = false;
+            // все фрагменты загружается в XML, нет необходимости делать это программно
+        } else {
+            // it's run on phone
+            // Load MyListFragment programmatically
+            isSinglePane = true;
+            Log.w("HEH", "Phone");
+            if (savedInstanceState == null) {
+                //if's the first time created
+                myListFragment = new PagerWithListFragment();
+                FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+                fragmentTransaction.add(R.id.phone_container, myListFragment);
+                fragmentTransaction.commit();
+            }
+        }
 
         // БД
         dbHelper = new WorkersDbAdapter(this);
@@ -69,17 +99,42 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
             UpdateDatabase();
         }
 
+
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        mDrawerList = (ListView) findViewById(R.id.left_drawer);
+        String[] listDataColumns = new String[] {WorkersDbAdapter.SPECIALTY_NAME};
+        int[] listReflection = new int[] {android.R.id.text1};
+        mDrawerAdapter = new SimpleCursorAdapter(this,
+                R.layout.drawer_list_item, null,
+                listDataColumns, listReflection, 0);
+        // Set the adapter for the list view
+        mDrawerList.setAdapter(mDrawerAdapter);
+        // Set the list's click listener
+        mDrawerList.setOnItemClickListener(new DrawerItemClickListener());
+
         mSpecialtyListCallbacks = this;
         LoaderManager lm = getSupportLoaderManager();
         lm.initLoader(SPECIALTY_LOADER_ID, null, mSpecialtyListCallbacks);
+    }
 
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the app.
-        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+    private class DrawerItemClickListener implements ListView.OnItemClickListener {
+        @Override
+        public void onItemClick(AdapterView parent, View view, int position, long id) {
+            selectItem(position);
+        }
+    }
 
-        // Set up the ViewPager with the sections adapter.
-        mViewPager = (ViewPager) findViewById(R.id.pager);
-        mViewPager.setAdapter(mSectionsPagerAdapter);
+    /** Swaps fragments in the main content view */
+    private void selectItem(int position) {
+        // Highlight the selected item, update the title, and close the drawer
+        mDrawerList.setItemChecked(position, true);
+        mDrawerLayout.closeDrawer(mDrawerList);
+        if (myListFragment != null) {
+            myListFragment.SetCurrentTab(position);
+        } else {
+            // TODO
+        }
+        //mViewPager.setCurrentItem(position);
     }
 
     @Override
@@ -175,8 +230,10 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
                 // is now available for use. Only now can we associate
                 // the queried Cursor with the SimpleCursorAdapter.
                 //mListAdapter.swapCursor(cursor);
-                mSectionsPagerAdapter.SetPageInfo(result);
+ /*               mSectionsPagerAdapter.SetPageInfo(result);
                 mSectionsPagerAdapter.notifyDataSetChanged();
+*/
+                mDrawerAdapter.swapCursor(result);
                 break;
         }
         // The listview now displays the queried data.
@@ -188,19 +245,10 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
         // Remove any references to the old data by replacing it with
         // a null Cursor.
         // mListAdapter.swapCursor(null);
-    }
-
-    static class MyGroupCursorLoader extends CursorLoader {
-        WorkersDbAdapter db;
-        public MyGroupCursorLoader(Context context, WorkersDbAdapter db) {
-            super(context);
-            this.db = db;
-        }
-
-        @Override
-        public Cursor loadInBackground() {
-            return db.getSpecialtyData();
-        }
+      /*  mSectionsPagerAdapter.SetPageInfo(null);
+        mSectionsPagerAdapter.notifyDataSetChanged();
+*/
+        mDrawerAdapter.swapCursor(null);
     }
 
     private class UpdateDatabase extends AsyncTask<String, Long, Long> {

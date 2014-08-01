@@ -5,6 +5,7 @@ import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
 
 import android.app.Activity;
 
+import android.support.v4.app.FragmentTransaction;
 import android.content.Context;
 import android.content.Intent;
 
@@ -12,7 +13,13 @@ import android.support.v4.app.ListFragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.Fragment;
 import android.support.v4.widget.SimpleCursorAdapter;
+
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarActivity;
+
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.SearchViewCompat;
 
@@ -33,7 +40,7 @@ import android.text.TextUtils;
 import android.graphics.Bitmap;
 import android.util.Log;
 
-public /*static*/ class WorkersListFragment extends ListFragment
+public class WorkersListFragment extends ListFragment
         implements LoaderManager.LoaderCallbacks<Cursor>{
     // Идентификатор Loader для загрузки элементов списка
     private static final int LIST_LOADER_ID = 1;
@@ -187,10 +194,48 @@ public /*static*/ class WorkersListFragment extends ListFragment
         args.putString("birthday", cursor.getString(3));
         args.putString("avatar_url", cursor.getString(4));
         args.putString("specs", specString);
-
+/*
         Intent newActivity = new Intent(context, DetailsActivity.class);
         newActivity.putExtras(args);
         startActivity(newActivity);
+        */
+        // Create a new fragment and specify the planet to show based on position
+        if(MainActivity.isSinglePane){
+            /*
+             * The second fragment not yet loaded.
+             * Load MyDetailFragment by FragmentTransaction, and pass
+             * data from current fragment to second fragment via bundle.
+             */
+            DetailsFragment myDetailFragment = new DetailsFragment();
+            myDetailFragment.setArguments(args);
+            FragmentTransaction fragmentTransaction =
+                    getActivity().getSupportFragmentManager().beginTransaction();
+            fragmentTransaction.replace(R.id.phone_container, myDetailFragment);
+            /*
+             * Add this transaction to the back stack.
+             * This means that the transaction will be remembered after it is
+             * committed, and will reverse its operation when later popped off
+             * the stack.
+             */
+            fragmentTransaction.addToBackStack(null);
+            fragmentTransaction.commit();
+            /* After Fragment.onActivityCreated(...) you'll have a valid activity accessible through getActivity().
+             * You'll need to cast it to an ActionBarActivity then make the call to getSupportActionBar().
+             */
+            ((ActionBarActivity)getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        } else {
+            /*
+             * Activity have two fragments. Pass data between fragments
+             * via reference to fragment
+             */
+
+            //get reference to MyDetailFragment
+           /* DetailsFragment myDetailFragment =
+                    (DetailsFragment)getFragmentManager().findFragmentById(R.id.detail_fragment);
+           // myDetailFragment.updateDetail(clickedDetail);
+*/
+            //todo
+        }
     }
 
     @Override

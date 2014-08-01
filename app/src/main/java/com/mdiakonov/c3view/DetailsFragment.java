@@ -2,7 +2,9 @@ package com.mdiakonov.c3view;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.ActionBarActivity;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -35,6 +37,35 @@ public class DetailsFragment extends Fragment {
         return view;
     }
 
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                getFragmentManager().popBackStack();
+                ((ActionBarActivity)getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+    final static String KEY_DISPLAY_OPT = "KEY_Display_Option";
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(KEY_DISPLAY_OPT, ((ActionBarActivity)getActivity()).getSupportActionBar().getDisplayOptions());
+
+    }
+
+/*
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        int savedDisplayOpt = savedInstanceState.getInt(KEY_DISPLAY_OPT);
+        if(savedDisplayOpt != 0){
+            ((ActionBarActivity)getActivity()).getSupportActionBar().setDisplayOptions(savedDisplayOpt);
+        }
+    }*/
     public void updateDetail(Bundle bundle) {
         if (bundle != null) {
             String birthday = bundle.getString("birthday");
