@@ -291,6 +291,7 @@ public class WorkersListFragment extends ListFragment
         }
     }
     @Override
+    // TODO
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
 

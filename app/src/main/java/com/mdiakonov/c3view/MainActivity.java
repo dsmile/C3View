@@ -112,7 +112,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 
 
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-        mDrawerList = (ListView) findViewById(R.id.left_drawer);
+        mDrawerList = (ListView) findViewById(R.id.left_drawer_list);
         String[] listDataColumns = new String[] {WorkersDbAdapter.SPECIALTY_NAME};
         int[] listReflection = new int[] {android.R.id.text1};
         mDrawerAdapter = new SimpleCursorAdapter(this,

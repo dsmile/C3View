@@ -13,5 +13,7 @@
     <string name="title_activity_details">Подробно</string>
     <string name="no_data">Не найдено</string>
     <string name="search">Поиск</string>
+    <string name="title_activity_location">Мои координаты</string>
+    <string name="hello_world">Hello world!</string>
 
 </resources>
