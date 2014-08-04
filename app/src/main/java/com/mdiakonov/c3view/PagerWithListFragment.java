@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 import android.support.v4.view.ViewPager;
@@ -17,7 +18,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
-public class PagerWithListFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor> {
+public class PagerWithListFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
     final static int SPECIALTY_LOADER_ID = 3;
     // Callback'и для SPECIALTY_LOADER_ID
     private LoaderManager.LoaderCallbacks<Cursor> mSpecialtyListCallbacks;
@@ -28,6 +29,17 @@ public class PagerWithListFragment extends Fragment implements LoaderManager.Loa
     WorkersDbAdapter dbHelper;
 
     ViewPager mViewPager;
+
+    public void OnDbChanges() {
+        Log.w("UPDD", "OnDbChanges");
+        Loader<Cursor> loader = getLoaderManager().getLoader(SPECIALTY_LOADER_ID);
+        if (loader != null && !loader.isReset()) {
+            Log.w("UPDD", "restartLoader");
+            getLoaderManager().restartLoader(SPECIALTY_LOADER_ID, null, this);
+        } else {
+            getLoaderManager().initLoader(SPECIALTY_LOADER_ID, null, this);
+        }
+    }
 
     // Better than getActivity() as it returns null if onAttach isn't called yet.
     @Override
@@ -74,8 +86,6 @@ public class PagerWithListFragment extends Fragment implements LoaderManager.Loa
     }
 
     public class SectionsPagerAdapter extends FragmentPagerAdapter {
-
-        private int pageCount;
         private Cursor cursor = null;
 
         public SectionsPagerAdapter(FragmentManager fm) {
@@ -92,7 +102,18 @@ public class PagerWithListFragment extends Fragment implements LoaderManager.Loa
                 fragment.setArguments(args);
                 return fragment;
             } else {
+                Log.w("UPDD", "getItem " + position);
                 return null;
+            }
+        }
+
+        @Override
+        public int getItemPosition(Object object) {
+            Log.w("UPDD", "getItemPosition " + cursor.toString());
+            if (cursor != null && (cursor.getCount() > 0)) {
+                return POSITION_UNCHANGED;
+            } else {
+                return POSITION_NONE;
             }
         }
 
@@ -137,6 +158,7 @@ public class PagerWithListFragment extends Fragment implements LoaderManager.Loa
                 // is now available for use. Only now can we associate
                 // the queried Cursor with the SimpleCursorAdapter.
                 //mListAdapter.swapCursor(cursor);
+                Log.w("UPDD", "onLoadFinished " + result.toString());
                 mSectionsPagerAdapter.SetPageInfo(result);
                 mSectionsPagerAdapter.notifyDataSetChanged();
 
@@ -151,6 +173,7 @@ public class PagerWithListFragment extends Fragment implements LoaderManager.Loa
         // Remove any references to the old data by replacing it with
         // a null Cursor.
         // mListAdapter.swapCursor(null);
+        Log.w("UPDD", "onLoaderFinished");
         mSectionsPagerAdapter.SetPageInfo(null);
         mSectionsPagerAdapter.notifyDataSetChanged();
 

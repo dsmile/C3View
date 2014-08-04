@@ -48,6 +48,7 @@ public class DetailsFragment extends Fragment {
         }
         return super.onOptionsItemSelected(item);
     }
+    /*
     final static String KEY_DISPLAY_OPT = "KEY_Display_Option";
 
     @Override
@@ -57,7 +58,7 @@ public class DetailsFragment extends Fragment {
 
     }
 
-/*
+
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);

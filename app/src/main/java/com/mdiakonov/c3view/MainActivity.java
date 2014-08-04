@@ -12,6 +12,8 @@ import android.support.v4.content.CursorLoader;
 import android.support.v4.widget.SimpleCursorAdapter;
 
 import java.util.List;
+
+import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 
 import java.io.BufferedReader;
@@ -43,7 +45,9 @@ import org.json.JSONObject;
 
 import android.util.Log;
 
-public class MainActivity extends FragmentActivity implements LoaderManager.LoaderCallbacks<Cursor> {
+// ActionBarActivity из support pack включает в себя класс FragmentActivity
+public class MainActivity extends ActionBarActivity implements LoaderManager.LoaderCallbacks<Cursor>,
+        WorkersListFragment.OnWorkerListSelectedListener {
     final static int SPECIALTY_LOADER_ID = 2;
     // Callback'и для SPECIALTY_LOADER_ID
     private LoaderManager.LoaderCallbacks<Cursor> mSpecialtyListCallbacks;
@@ -63,30 +67,37 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
     static boolean isSinglePane;
     private static final String TAG = "MainActivity";
     PagerWithListFragment myListFragment;
+    DetailsFragment myDetailFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Log.w("HEH", "Phone");
-
         View v = findViewById(R.id.phone_container);
         if(v == null){
             //it's run on tablet
             isSinglePane = false;
-            // все фрагменты загружается в XML, нет необходимости делать это программно
+            // все фрагменты загружается из XML, нет необходимости делать это программно
+
         } else {
             // it's run on phone
             // Load MyListFragment programmatically
             isSinglePane = true;
             Log.w("HEH", "Phone");
+
+            // However, if we're being restored from a previous state,
+            // then we don't need to do anything or else
+            // we could end up with overlapping fragments.
             if (savedInstanceState == null) {
-                //if's the first time created
+                // Create a new Fragment to be placed in the activity layout
                 myListFragment = new PagerWithListFragment();
-                FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
-                fragmentTransaction.add(R.id.phone_container, myListFragment);
-                fragmentTransaction.commit();
+                // In case this activity was started with special instructions from an
+                // Intent, pass the Intent's extras to the fragment as arguments
+                myListFragment.setArguments(getIntent().getExtras());
+                // Add the fragment to the 'fragment_container' FrameLayout
+                getSupportFragmentManager().beginTransaction()
+                    .add(R.id.phone_container, myListFragment).commit();
             }
         }
 
@@ -117,6 +128,38 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
         lm.initLoader(SPECIALTY_LOADER_ID, null, mSpecialtyListCallbacks);
     }
 
+
+    public void onWorkerSelected(Bundle args) {
+
+        DetailsFragment detailsFrag = (DetailsFragment)
+                getSupportFragmentManager().findFragmentById(R.id.detail_fragment);
+
+        // Create a new fragment and specify the planet to show based on position
+        if(detailsFrag == null){
+            /*
+             * The second fragment not yet loaded.
+             * Load MyDetailFragment by FragmentTransaction, and pass
+             * data from current fragment to second fragment via bundle.
+             */
+            myDetailFragment = new DetailsFragment();
+            myDetailFragment.setArguments(args);
+            // Replace whatever is in the fragment_container view with this fragment,
+            // and add the transaction to the back stack so the user can navigate back
+            FragmentTransaction fragmentTransaction =
+                    getSupportFragmentManager().beginTransaction();
+            fragmentTransaction.replace(R.id.phone_container, myDetailFragment);
+            fragmentTransaction.addToBackStack(null);
+            fragmentTransaction.commit();
+        } else {
+            //get reference to MyDetailFragment
+            // If article frag is available, we're in two-pane layout...
+
+            // Call a method in the DetailsFragment to update its content
+            detailsFrag.updateDetail(args);
+            myDetailFragment = null;
+        }
+    }
+
     private class DrawerItemClickListener implements ListView.OnItemClickListener {
         @Override
         public void onItemClick(AdapterView parent, View view, int position, long id) {
@@ -129,12 +172,11 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
         // Highlight the selected item, update the title, and close the drawer
         mDrawerList.setItemChecked(position, true);
         mDrawerLayout.closeDrawer(mDrawerList);
+
         if (myListFragment != null) {
+            getSupportFragmentManager().popBackStack();
             myListFragment.SetCurrentTab(position);
-        } else {
-            // TODO
         }
-        //mViewPager.setCurrentItem(position);
     }
 
     @Override
@@ -156,6 +198,7 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
         } else if (id == R.id.action_delete) {
             // TODO при очистке таблиц не обновляются вкладки
             dbHelper.ClearTables();
+            UpdateListView();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -195,13 +238,11 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
             } else {
                 return 0;
             }
-            // return pageCount;
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
             if (cursor != null) {
-                //            return "Менеджеры";
                 cursor.moveToPosition(position);
                 return cursor.getString(0);
             } else {
@@ -229,10 +270,6 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
                 // The asynchronous load is complete and the data
                 // is now available for use. Only now can we associate
                 // the queried Cursor with the SimpleCursorAdapter.
-                //mListAdapter.swapCursor(cursor);
- /*               mSectionsPagerAdapter.SetPageInfo(result);
-                mSectionsPagerAdapter.notifyDataSetChanged();
-*/
                 mDrawerAdapter.swapCursor(result);
                 break;
         }
@@ -244,10 +281,6 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
         // For whatever reason, the Loader's data is now unavailable.
         // Remove any references to the old data by replacing it with
         // a null Cursor.
-        // mListAdapter.swapCursor(null);
-      /*  mSectionsPagerAdapter.SetPageInfo(null);
-        mSectionsPagerAdapter.notifyDataSetChanged();
-*/
         mDrawerAdapter.swapCursor(null);
     }
 
@@ -365,13 +398,31 @@ public class MainActivity extends FragmentActivity implements LoaderManager.Load
 
 
     protected void UpdateListView() {
-        Loader<Cursor> loader = getSupportLoaderManager().getLoader(-1);
+        Loader<Cursor> loader = getSupportLoaderManager().getLoader(SPECIALTY_LOADER_ID);
+        // TODO
         if (loader != null && !loader.isReset()) {
-            getSupportLoaderManager().restartLoader(-1, null, this);
+            getSupportLoaderManager().restartLoader(SPECIALTY_LOADER_ID, null, this);
         } else {
-            getSupportLoaderManager().initLoader(-1, null, this);
+            getSupportLoaderManager().initLoader(SPECIALTY_LOADER_ID, null, this);
+        }
+
+        if (myListFragment != null) {
+            // телефон
+            myListFragment.OnDbChanges();
+        } else {
+            // планшет
+            PagerWithListFragment pagerFrag = (PagerWithListFragment)
+                    getSupportFragmentManager().findFragmentById(R.id.list_fragment);
+            if (pagerFrag != null) {
+                // If article frag is available, we're in two-pane layout...
+
+                // Call a method in the ArticleFragment to update its content
+                pagerFrag.OnDbChanges();
+
+            }
         }
     }
+
     protected void UpdateDatabase() {
         new UpdateDatabase().execute("http://65apps.com/images/testTask.json");
     }

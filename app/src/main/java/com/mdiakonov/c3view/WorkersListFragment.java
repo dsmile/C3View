@@ -15,6 +15,7 @@ import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.Fragment;
+import android.support.v4.view.PagerTabStrip;
 import android.support.v4.widget.SimpleCursorAdapter;
 
 import android.support.v7.app.ActionBar;
@@ -23,10 +24,12 @@ import android.support.v7.app.ActionBarActivity;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.SearchViewCompat;
 
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MenuInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.OvershootInterpolator;
 import android.view.animation.ScaleAnimation;
 
@@ -43,7 +46,7 @@ import android.util.Log;
 public class WorkersListFragment extends ListFragment
         implements LoaderManager.LoaderCallbacks<Cursor>{
     // Идентификатор Loader для загрузки элементов списка
-    private static final int LIST_LOADER_ID = 1;
+    public static final int LIST_LOADER_ID = 1;
     // Callback'и для LIST_LOADER_ID
     private LoaderManager.LoaderCallbacks<Cursor> mListCallbacks;
     // Адаптер для данных списка
@@ -51,14 +54,44 @@ public class WorkersListFragment extends ListFragment
     // Если не пустая строка (или null) - фильтр по именам работников в списке
     String mCurFilter;
 
+    PagerTabStrip mPagerTabStrip;
+
     Context context;
     WorkersDbAdapter dbHelper;
 
+    OnWorkerListSelectedListener mCallback;
+    // The container Activity must implement this interface so the frag can deliver messages
+    public interface OnWorkerListSelectedListener {
+        /** Called by HeadlinesFragment when a list item is selected */
+        public void onWorkerSelected(Bundle args);
+    }
+/*
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+
+        View view = inflater.inflate(R.layout.fragment_pager_with_list, null);
+
+        mPagerTabStrip = (PagerTabStrip) view.findViewById(R.id.pagerTabStrip);
+
+        return view;
+    }
+*/
     // Better than getActivity() as it returns null if onAttach isn't called yet.
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
         context = activity;
+
+        // This makes sure that the container activity has implemented
+        // the callback interface. If not, it throws an exception
+        try {
+            mCallback = (OnWorkerListSelectedListener) activity;
+        } catch (ClassCastException e) {
+            throw new ClassCastException(activity.toString()
+                    + " must implement OnWorkerListSelectedListener");
+        }
+
     }
 
     @Override
@@ -68,8 +101,15 @@ public class WorkersListFragment extends ListFragment
         // Текст, когда список пуст
         setEmptyText(getResources().getText(R.string.no_data));
 
+       // mPagerTabStrip.setBackgroundResource(R.drawable.tab_background);
+
         // We have a menu item to show in action bar.
         setHasOptionsMenu(true);
+
+        /* After Fragment.onActivityCreated(...) you'll have a valid activity accessible through getActivity().
+         * You'll need to cast it to an ActionBarActivity then make the call to getSupportActionBar().
+         */
+        //((ActionBarActivity)getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         dbHelper = new WorkersDbAdapter(context);
         dbHelper.open();
@@ -181,7 +221,6 @@ public class WorkersListFragment extends ListFragment
         //Cursor cursor = mAdapter.getItem(position);
         Cursor cursor = mListAdapter.getCursor();
         int workerId = cursor.getInt(0);
-
         Cursor specs = dbHelper.getWorkerSpecialities(workerId);
         Log.w("DDATA", "Spec_cnt = " + specs.getCount());
         String specString = "";
@@ -194,48 +233,8 @@ public class WorkersListFragment extends ListFragment
         args.putString("birthday", cursor.getString(3));
         args.putString("avatar_url", cursor.getString(4));
         args.putString("specs", specString);
-/*
-        Intent newActivity = new Intent(context, DetailsActivity.class);
-        newActivity.putExtras(args);
-        startActivity(newActivity);
-        */
-        // Create a new fragment and specify the planet to show based on position
-        if(MainActivity.isSinglePane){
-            /*
-             * The second fragment not yet loaded.
-             * Load MyDetailFragment by FragmentTransaction, and pass
-             * data from current fragment to second fragment via bundle.
-             */
-            DetailsFragment myDetailFragment = new DetailsFragment();
-            myDetailFragment.setArguments(args);
-            FragmentTransaction fragmentTransaction =
-                    getActivity().getSupportFragmentManager().beginTransaction();
-            fragmentTransaction.replace(R.id.phone_container, myDetailFragment);
-            /*
-             * Add this transaction to the back stack.
-             * This means that the transaction will be remembered after it is
-             * committed, and will reverse its operation when later popped off
-             * the stack.
-             */
-            fragmentTransaction.addToBackStack(null);
-            fragmentTransaction.commit();
-            /* After Fragment.onActivityCreated(...) you'll have a valid activity accessible through getActivity().
-             * You'll need to cast it to an ActionBarActivity then make the call to getSupportActionBar().
-             */
-            ((ActionBarActivity)getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        } else {
-            /*
-             * Activity have two fragments. Pass data between fragments
-             * via reference to fragment
-             */
 
-            //get reference to MyDetailFragment
-           /* DetailsFragment myDetailFragment =
-                    (DetailsFragment)getFragmentManager().findFragmentById(R.id.detail_fragment);
-           // myDetailFragment.updateDetail(clickedDetail);
-*/
-            //todo
-        }
+        mCallback.onWorkerSelected(args);
     }
 
     @Override
