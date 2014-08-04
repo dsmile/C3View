@@ -24,7 +24,7 @@ public class DetailsFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        View view = inflater.inflate(R.layout.activity_details, null);
+        View view = inflater.inflate(R.layout.fragment_details, null);
 
         txtListAge = (TextView) view.findViewById(R.id.lblDetailsAge);
         txtListBirthday = (TextView) view.findViewById(R.id.lblDetailsBirthday);

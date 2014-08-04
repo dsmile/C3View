@@ -187,6 +187,7 @@ public class WorkersListFragment extends ListFragment
         MenuItemCompat.setShowAsAction(item, MenuItemCompat.SHOW_AS_ACTION_IF_ROOM);
         View sv = SearchViewCompat.newSearchView(context);
         SearchViewCompat.setOnQueryTextListener(sv, mOnQueryTextListener);
+
         MenuItemCompat.setActionView(item, sv);
     }
     // The following callbacks are called for the SearchView.OnQueryChangeListener
@@ -202,7 +203,7 @@ public class WorkersListFragment extends ListFragment
                     mCurFilter = !TextUtils.isEmpty(newText) ? newText : null;
                     Bundle args = getArguments();
                     args.putString("FILTER", mCurFilter);
-                    getLoaderManager().restartLoader(0, getArguments(), WorkersListFragment.this);
+                    getLoaderManager().restartLoader(LIST_LOADER_ID, args, WorkersListFragment.this);
                     Log.w("HEH", "Filter: " + mCurFilter);
                     return true;
                 }

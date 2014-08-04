@@ -102,6 +102,7 @@ public class PagerWithListFragment extends Fragment implements LoaderManager.Loa
                 fragment.setArguments(args);
                 return fragment;
             } else {
+                // TODO показать красиво, что записей в базе данных нет
                 Log.w("UPDD", "getItem " + position);
                 return null;
             }
