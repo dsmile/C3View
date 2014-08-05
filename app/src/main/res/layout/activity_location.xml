@@ -15,5 +15,22 @@
         android:id="@+id/coord_text"
         android:textStyle="bold"
         android:typeface="monospace"/>
+    <ProgressBar
+        android:id="@+id/address_progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:indeterminate="true"
+        android:visibility="gone" />
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Адрес"
+        android:id="@+id/button"
+        android:layout_below="@+id/coord_text"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:onClick="getAddress"
+        />
 </RelativeLayout>

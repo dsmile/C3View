@@ -15,5 +15,6 @@
     <string name="search">Поиск</string>
     <string name="title_activity_location">Мои координаты</string>
     <string name="hello_world">Hello world!</string>
+    <string name="no_geocoder_available">No geocoder available</string>
 
 </resources>

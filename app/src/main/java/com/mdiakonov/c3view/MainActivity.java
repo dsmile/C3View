@@ -1,6 +1,7 @@
 package com.mdiakonov.c3view;
 
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 
 import android.os.AsyncTask;
@@ -126,6 +127,9 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         mSpecialtyListCallbacks = this;
         LoaderManager lm = getSupportLoaderManager();
         lm.initLoader(SPECIALTY_LOADER_ID, null, mSpecialtyListCallbacks);
+
+        Intent newActivity = new Intent(this, LocationActivity.class);
+        startActivity(newActivity);
     }
 
 
