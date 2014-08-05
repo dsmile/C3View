@@ -306,6 +306,7 @@ public class LocationActivity extends ActionBarActivity  implements
             } catch (IntentSender.SendIntentException e) {
                 // Log the error
                 e.printStackTrace();
+                //df
             }
         } else {
             /*
