@@ -3,6 +3,8 @@ package com.mdiakonov.c3view;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -33,8 +35,9 @@ import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 
 
+import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.LocationClient;
-//import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.mdiakonov.c3view.R;
 
@@ -45,11 +48,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import android.location.LocationListener;
+//import android.location.LocationListener;
+
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
 
 public class LocationActivity extends ActionBarActivity  implements
-        GooglePlayServicesClient.ConnectionCallbacks,
-        GooglePlayServicesClient.OnConnectionFailedListener,
+        GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
         LocationListener {
     private ScheduledExecutorService scheduleTaskExecutor;
     private TextView mCoordTextView;
@@ -75,21 +81,18 @@ public class LocationActivity extends ActionBarActivity  implements
     boolean mUpdatesRequested;
     SharedPreferences mPrefs;
     SharedPreferences.Editor mEditor;
+    private GoogleApiClient mClient;
+    private PendingIntent mRecogPendingIntent;
 
-//    private final Context mContext;
+    // Request code to use when launching the resolution activity
+    private static final int REQUEST_RESOLVE_ERROR = 1001;
+    // Unique tag for the error dialog fragment
+    private static final String DIALOG_ERROR = "dialog_error";
+    // Bool to track whether the app is already resolving an error
+    private boolean mResolvingError;
 
-    // flag for GPS status
-    boolean isGPSEnabled = false;
-    // flag for network status
-    boolean isNetworkEnabled = false;
-    boolean canGetLocation = false;
-    Location location; // location
-    // The minimum distance to change Updates in meters
-    private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 10; // 10 meters
-    // The minimum time between updates in milliseconds
-    private static final long MIN_TIME_BW_UPDATES = 1000 * 10 * 1; // 1 minute
-    // Declaring a Location Manager
-    protected LocationManager locationManager;
+    private static final String STATE_RESOLVING_ERROR = "resolving_error";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,100 +103,38 @@ public class LocationActivity extends ActionBarActivity  implements
         mActivityIndicator =
                 (ProgressBar) findViewById(R.id.address_progress);
 
-        // Open the shared preferences
-        mPrefs = getSharedPreferences("SharedPreferences", Context.MODE_PRIVATE);
-        // Get a SharedPreferences editor
-        mEditor = mPrefs.edit();
-        // Start with updates turned off
-        mUpdatesRequested = false;
+        mResolvingError = savedInstanceState != null
+                && savedInstanceState.getBoolean(STATE_RESOLVING_ERROR, false);
 
 
-        if (!initLocationProviders()) {
-            showSettingsAlert();
-        }
-
-        if (initLocationProviders()) {
-            startRequests();
-        } else {
-            mCoordTextView.setText("Сервисы местоположения недоступны, включите их и перезапустите приложение");
-        }
-
-        /*
-         * Create a new location client, using the enclosing class to
-         * handle callbacks.
-         */
-/*        mLocationClient = new LocationClient(this, this, this);
+        Log.w("LOCC", "onCreate");
+        mClient = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addApi(ActivityRecognition.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
 
         // Create the LocationRequest object
         mLocationRequest = LocationRequest.create();
         // Use high accuracy
-        mLocationRequest.setPriority(
-                LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         // Set the update interval to 5 seconds
         mLocationRequest.setInterval(UPDATE_INTERVAL);
         // Set the fastest update interval to 1 second
         mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
-*/
-    }
 
-    public boolean initLocationProviders() {
-        try {
-            locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        /*
+         * Create the PendingIntent that Location Services uses
+         * to send activity recognition updates back to this app.
+         */
+        Intent intent = new Intent(this, ActivityRecognitionIntentService.class);
+        /*
+         * Return a PendingIntent that starts the IntentService.
+         */
+        mRecogPendingIntent = PendingIntent.getService(this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT);
 
-            // getting GPS status
-            isGPSEnabled = locationManager
-                    .isProviderEnabled(LocationManager.GPS_PROVIDER);
-
-            // getting network status
-            isNetworkEnabled = locationManager
-                    .isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-
-            return (isGPSEnabled | isNetworkEnabled);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    public void startRequests() {
-        try {
-            if (!isGPSEnabled && !isNetworkEnabled) {
-                // no network provider is enabled
-
-            } else {
-                this.canGetLocation = true;
-                // First get location from Network Provider
-                if (isNetworkEnabled) {
-                    locationManager.requestLocationUpdates(
-                            LocationManager.NETWORK_PROVIDER,
-                            MIN_TIME_BW_UPDATES,
-                            MIN_DISTANCE_CHANGE_FOR_UPDATES, this);
-                    Log.d("Network", "Network");
-                    if (locationManager != null) {
-                        location = locationManager
-                                .getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                    }
-                }
-                // if GPS Enabled get lat/long using GPS Services
-                if (isGPSEnabled) {
-                    if (location == null) {
-                        locationManager.requestLocationUpdates(
-                                LocationManager.GPS_PROVIDER,
-                                MIN_TIME_BW_UPDATES,
-                                MIN_DISTANCE_CHANGE_FOR_UPDATES, this);
-                        Log.d("GPS Enabled", "GPS Enabled");
-                        if (locationManager != null) {
-                            location = locationManager
-                                    .getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                        }
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
      /**
@@ -231,29 +172,15 @@ public class LocationActivity extends ActionBarActivity  implements
      }
 
     // Define the callback method that receives location updates
-    @Override
     public void onLocationChanged(Location location) {
         // Report to the UI that the location was updated
+        mLocation = location;
         String msg = "Местоположение: " +
                 Double.toString(location.getLatitude()) + ", " +
                 Double.toString(location.getLongitude());
         mCoordTextView.setText(msg);
     }
 
-    @Override
-    public void onProviderDisabled(String provider) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
-    }
 
     /*
      * Called by Location Services when the request to connect the
@@ -264,57 +191,92 @@ public class LocationActivity extends ActionBarActivity  implements
     public void onConnected(Bundle dataBundle) {
         // Display the connection status
         Toast.makeText(this, "Connected", Toast.LENGTH_SHORT).show();
+        Log.w("LOCC", "onConnected");
+
+        if (mLocation == null) {
+            mLocation = LocationServices.FusedLocationApi.getLastLocation(mClient);
+            onLocationChanged(mLocation);
+        }
         // If already requested, start periodic updates
-        if (mUpdatesRequested) {
-           // mLocationClient.requestLocationUpdates(mLocationRequest, this);
+        LocationServices.FusedLocationApi.requestLocationUpdates(mClient,
+                mLocationRequest, this);
+        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates(mClient, UPDATE_INTERVAL,
+                mRecogPendingIntent);
+    }
+
+    @Override
+    public void onConnectionSuspended(int cause) {
+        Log.w("LOCC", "onSuspended " + cause);
+        Toast.makeText(this, "ConnectionSuspended", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult result) {
+        if (mResolvingError) {
+            // Already attempting to resolve an error.
+            return;
+        } else if (result.hasResolution()) {
+            try {
+                mResolvingError = true;
+                result.startResolutionForResult(this, REQUEST_RESOLVE_ERROR);
+            } catch (IntentSender.SendIntentException e) {
+                // There was an error with the resolution intent. Try again.
+                mClient.connect();
+            }
+        } else {
+            // Show dialog using GooglePlayServicesUtil.getErrorDialog()
+            showErrorDialog(result.getErrorCode());
+            mResolvingError = true;
         }
     }
 
-    /*
-     * Called by Location Services if the connection to the
-     * location client drops because of an error.
-     */
-    @Override
-    public void onDisconnected() {
-        // Display the connection status
-        Toast.makeText(this, "Disconnected. Please re-connect.",
-                Toast.LENGTH_SHORT).show();
+    // The rest of this code is all about building the error dialog
+
+    /* Creates a dialog for an error message */
+    private void showErrorDialog(int errorCode) {
+        // Create a fragment for the error dialog
+        ErrorDialogFragment dialogFragment = new ErrorDialogFragment();
+        // Pass the error that should be displayed
+        Bundle args = new Bundle();
+        args.putInt(DIALOG_ERROR, errorCode);
+        dialogFragment.setArguments(args);
+        dialogFragment.show(getSupportFragmentManager(), "errordialog");
     }
 
-    /*
-     * Called by Location Services if the attempt to
-     * Location Services fails.
-     */
+    /* Called from ErrorDialogFragment when the dialog is dismissed. */
+    public void onDialogDismissed() {
+        mResolvingError = false;
+    }
+
+    /* A fragment to display an error dialog */
+    public static class ErrorDialogFragment extends DialogFragment {
+        public ErrorDialogFragment() { }
+
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            // Get the error code and retrieve the appropriate dialog
+            int errorCode = this.getArguments().getInt(DIALOG_ERROR);
+            return GooglePlayServicesUtil.getErrorDialog(errorCode,
+                    this.getActivity(), REQUEST_RESOLVE_ERROR);
+        }
+
+        @Override
+        public void onDismiss(DialogInterface dialog) {
+            ((LocationActivity)getActivity()).onDialogDismissed();
+        }
+    }
+
     @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-        /*
-         * Google Play services can resolve some errors it detects.
-         * If the error has a resolution, try sending an Intent to
-         * start a Google Play services activity that can resolve
-         * error.
-         */
-        if (connectionResult.hasResolution()) {
-            try {
-                // Start an Activity that tries to resolve the error
-                connectionResult.startResolutionForResult(
-                        this,
-                        CONNECTION_FAILURE_RESOLUTION_REQUEST);
-                /*
-                 * Thrown if Google Play services canceled the original
-                 * PendingIntent
-                 */
-            } catch (IntentSender.SendIntentException e) {
-                // Log the error
-                e.printStackTrace();
-                //df
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_RESOLVE_ERROR) {
+            mResolvingError = false;
+            if (resultCode == RESULT_OK) {
+                // Make sure the app is not already connected or attempting to connect
+                if (!mClient.isConnecting() &&
+                        !mClient.isConnected()) {
+                    mClient.connect();
+                }
             }
-        } else {
-            /*
-             * If no resolution is available, display a dialog to the
-             * user with the error.
-             */
-            // TODO
-            //showErrorDialog();
         }
     }
 
@@ -325,31 +287,18 @@ public class LocationActivity extends ActionBarActivity  implements
     protected void onStart() {
         super.onStart();
         // Connect the client.
-       // mLocationClient.connect();
+        if (!mResolvingError) {
+            mClient.connect();
+        }
     }
 
     @Override
     protected void onPause() {
-        // Save the current setting for updates
-        mEditor.putBoolean("KEY_UPDATES_ON", mUpdatesRequested);
-        mEditor.commit();
         super.onPause();
     }
 
     @Override
     protected void onResume() {
-        /*
-         * Get any previous setting for location updates
-         * Gets "false" if an error occurs
-         */
-        if (mPrefs.contains("KEY_UPDATES_ON")) {
-            mUpdatesRequested =
-                    mPrefs.getBoolean("KEY_UPDATES_ON", false);
-            // Otherwise, turn off location updates
-        } else {
-            mEditor.putBoolean("KEY_UPDATES_ON", false);
-            mEditor.commit();
-        }
         super.onResume();
     }
 
@@ -359,23 +308,15 @@ public class LocationActivity extends ActionBarActivity  implements
      */
     @Override
     protected void onStop() {
-        // If the client is connected
-       // if (mLocationClient.isConnected()) {
-            /*
-             * Remove location updates for a listener.
-             * The current Activity is the listener, so
-             * the argument is "this".
-             */
-           //U mLocationClient.removeLocationUpdates(this);
-        //}
-        /*
-         * After disconnect() is called, the client is
-         * considered "dead".
-         */
-       // mLocationClient.disconnect();
+        mClient.disconnect();
         super.onStop();
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(STATE_RESOLVING_ERROR, mResolvingError);
+    }
 
     /**
      * The "Get Address" button in the UI is defined with
@@ -393,15 +334,13 @@ public class LocationActivity extends ActionBarActivity  implements
             return;
         }
 
-        if (servicesConnected()) {
-            if (location != null ) {
-                // Turn the indefinite activity indicator on
-                mActivityIndicator.setVisibility(View.VISIBLE);
-                // Start the background task
-                (new GetAddressTask(this)).execute(location);
-            }
-
+        if (mLocation != null ) {
+            // Turn the indefinite activity indicator on
+            mActivityIndicator.setVisibility(View.VISIBLE);
+            // Start the background task
+            (new GetAddressTask(this)).execute(mLocation);
         }
+
     }
 
     /**
@@ -500,61 +439,7 @@ public class LocationActivity extends ActionBarActivity  implements
 
 
     }
-
-
-    // Global constants
-    /*
-     * Define a request code to send to Google Play services
-     * This code is returned in Activity.onActivityResult
-     */
-    private final static int
-            CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
-
-    // Define a DialogFragment that displays the error dialog
-    public static class ErrorDialogFragment extends DialogFragment {
-        // Global field to contain the error dialog
-        private Dialog mDialog;
-        // Default constructor. Sets the dialog field to null
-        public ErrorDialogFragment() {
-            super();
-            mDialog = null;
-        }
-        // Set the dialog to display
-        public void setDialog(Dialog dialog) {
-            mDialog = dialog;
-        }
-        // Return a Dialog to the DialogFragment.
-        @Override
-        public Dialog onCreateDialog(Bundle savedInstanceState) {
-            return mDialog;
-        }
-    }
-
-    /*
-     * Handle results returned to the FragmentActivity
-     * by Google Play services
-     */
-    @Override
-    protected void onActivityResult(
-            int requestCode, int resultCode, Intent data) {
-        // Decide what to do based on the original request code
-        switch (requestCode) {
-            case CONNECTION_FAILURE_RESOLUTION_REQUEST :
-            /*
-             * If the result code is Activity.RESULT_OK, try
-             * to connect again
-             */
-                switch (resultCode) {
-                    case Activity.RESULT_OK :
-                    /*
-                     * Try the request again
-                     */
-                     Log.w("LOCC", "CONNECTION_FAILURE_RESOLUTION_REQUEST RESULT_OK" );
-                     // TODO
-                     break;
-                }
-        }
-    }
+/*
 
     private boolean servicesConnected() {
         // Check that Google Play services is available
@@ -591,5 +476,5 @@ public class LocationActivity extends ActionBarActivity  implements
 
         return false;
     }
-
+*/
 }

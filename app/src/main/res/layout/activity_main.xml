@@ -27,11 +27,18 @@
                   android:dividerHeight="10dp"
                   android:background="#fff"/>
 
-        <TextView
-            android:id="@+id/text_view2"
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Координаты" />
+            android:layout_alignParentBottom="true" >
+
+            <TextView
+                android:id="@+id/text_view2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Координаты" />
+
+        </RelativeLayout>
     </RelativeLayout>
 
 </android.support.v4.widget.DrawerLayout>
