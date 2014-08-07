@@ -27,6 +27,7 @@ public class ActivityRecognitionIntentService extends IntentService {
 
 
     // Store the app's shared preferences repository
+    
     private SharedPreferences mPrefs;
 
     public ActivityRecognitionIntentService() {
@@ -179,7 +180,7 @@ public class ActivityRecognitionIntentService extends IntentService {
     private boolean activityChanged(int currentType) {
 
         // Get the previous type, otherwise return the "unknown" type
-        int previousType = mPrefs.getInt(ActivityUtils.KEY_PREVIOUS_ACTIVITY_TYPE,
+        int previousType = mPrefs.getInt(KEY_PREVIOUS_ACTIVITY_TYPE,
                 DetectedActivity.UNKNOWN);
 
         // If the previous type isn't the same as the current type, the activity has changed

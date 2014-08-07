@@ -11,7 +11,7 @@ import static android.provider.BaseColumns._ID;
 
 public class WorkersDbAdapter {
     private static final String DATABASE_NAME = "workers.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     public static final String TABLE_WORKERS_NAME = "workers";
     // Столбцы в таблице "workers"
@@ -83,6 +83,18 @@ public class WorkersDbAdapter {
         }
     }
 
+    public void beginTransaction() {
+        mDb.beginTransaction();
+    }
+
+    public void setTransactionSuccessful() {
+        mDb.setTransactionSuccessful();
+    }
+
+    public void endTransaction() {
+        mDb.endTransaction();
+    }
+
     // данные по специальностям
     public Cursor getSpecialtyData() {
         return mDb.rawQuery("SELECT DISTINCT " + SPECIALTY_NAME + ", " + SPECIALTY_ID + " AS " +
@@ -130,7 +142,7 @@ public class WorkersDbAdapter {
         initialValues.put(L_NAME, l_name);
         initialValues.put(BIRTHDAY, birthday);
         initialValues.put(AVATR_URL, avatr_url);
-        initialValues.put(SPECIALTY_ID, specialty_id);
+        initialValues.put("sds", specialty_id);
         return mDb.insert(TABLE_WORKERS_NAME, null, initialValues);
     }
 

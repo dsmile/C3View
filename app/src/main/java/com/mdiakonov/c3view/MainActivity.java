@@ -128,8 +128,8 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         LoaderManager lm = getSupportLoaderManager();
         lm.initLoader(SPECIALTY_LOADER_ID, null, mSpecialtyListCallbacks);
 
-        Intent newActivity = new Intent(this, LocationActivity.class);
-        startActivity(newActivity);
+//        Intent newActivity = new Intent(this, LocationActivity.class);
+//        startActivity(newActivity);
     }
 
 
@@ -357,6 +357,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                 dbHelper.ClearTables();
                 // Разбор файла с данными
                 JSONObject jsonResponse;
+                dbHelper.beginTransaction();
                 try {
                     jsonResponse = new JSONObject(Content);
                     JSONArray jsonMainNode = jsonResponse.optJSONArray("response");
@@ -385,12 +386,21 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                                 dbHelper.createSpeciality(specialty_id, specName, worker_id);
                             }
                         }
-                    }
-                    Toast.makeText(MainActivity.this, R.string.update_db_end, Toast.LENGTH_SHORT).show();
-                    UpdateListView();
 
+                    }
+
+                    dbHelper.setTransactionSuccessful();
                 } catch (JSONException e) {
+                    dbHelper.endTransaction();
                     e.printStackTrace();
+                    Toast.makeText(MainActivity.this, R.string.update_db_error, Toast.LENGTH_SHORT).show();
+                    Error = "Db Insert Error";
+                }
+                dbHelper.endTransaction();
+
+                if (Error == null) {
+                    UpdateListView();
+                    Toast.makeText(MainActivity.this, R.string.update_db_end, Toast.LENGTH_SHORT).show();
                 }
             }
         }
