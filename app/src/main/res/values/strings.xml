@@ -2,6 +2,9 @@
 <resources>
 
     <string name="app_name">C3View</string>
+    <string name="app_desc">Все коллеги в одном месте</string>
+    <string name="app_copyright">© Dsmile, 2014</string>
+    <string name="app_logo">Логотип</string>
     <string name="action_settings">Настройки</string>
     <string name="action_update">Загрузить</string>
     <string name="action_delete">Очистить БД</string>
@@ -16,5 +19,7 @@
     <string name="title_activity_location">Мои координаты</string>
     <string name="hello_world">Hello world!</string>
     <string name="no_geocoder_available">No geocoder available</string>
+    <string name="turn_on_GPS">Можете включить gps, нажав сюда</string>
+    <string name="date_format_error">Ошибка формата даты</string>
 
 </resources>

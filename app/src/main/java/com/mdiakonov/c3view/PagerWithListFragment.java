@@ -46,16 +46,18 @@ public class PagerWithListFragment extends Fragment implements LoaderManager.Loa
     public void onAttach(Activity activity) {
         super.onAttach(activity);
         context = activity;
+
+
     }
 
+    @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
         // We have a menu item to show in action bar.
         setHasOptionsMenu(true);
 
-        dbHelper = new WorkersDbAdapter(context);
-        dbHelper.open();
+        dbHelper = ((MainActivity)this.getActivity()).getDbHelper();
 
         // Create the adapter that will return a fragment for each of the three
         // primary sections of the app.

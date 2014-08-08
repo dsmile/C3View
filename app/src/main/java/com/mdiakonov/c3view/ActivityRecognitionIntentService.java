@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2013 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.mdiakonov.c3view;
 
 import com.google.android.gms.location.ActivityRecognitionResult;
@@ -12,29 +28,35 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.provider.Settings;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
+
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
- * Created by MDiakonov on 06.08.2014.
+ * Service that receives ActivityRecognition updates. It receives updates
+ * in the background, even if the main Activity is not visible.
  */
 public class ActivityRecognitionIntentService extends IntentService {
-    // Shared Preferences repository name
-    public static final String SHARED_PREFERENCES =
-            "com.example.android.activityrecognition.SHARED_PREFERENCES";
 
-    // Key in the repository for the previous activity
-    public static final String KEY_PREVIOUS_ACTIVITY_TYPE =
-            "com.example.android.activityrecognition.KEY_PREVIOUS_ACTIVITY_TYPE";
+    // Formats the timestamp in the log
+    private static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss.SSSZ";
 
+    // Delimits the timestamp from the log info
+    private static final String LOG_DELIMITER = ";;";
+
+    // A date formatter
+    private SimpleDateFormat mDateFormat;
 
     // Store the app's shared preferences repository
-    
     private SharedPreferences mPrefs;
 
     public ActivityRecognitionIntentService() {
         // Set the label for the service's background thread
         super("ActivityRecognitionIntentService");
     }
-
 
     /**
      * Called when a new activity detection update is available.
@@ -44,13 +66,27 @@ public class ActivityRecognitionIntentService extends IntentService {
 
         // Get a handle to the repository
         mPrefs = getApplicationContext().getSharedPreferences(
-                SHARED_PREFERENCES, Context.MODE_PRIVATE);
+                ActivityUtils.SHARED_PREFERENCES, Context.MODE_PRIVATE);
+
+        // Get a date formatter, and catch errors in the returned timestamp
+        try {
+            mDateFormat = (SimpleDateFormat) DateFormat.getDateTimeInstance();
+        } catch (Exception e) {
+            Log.e(ActivityUtils.APPTAG, getString(R.string.date_format_error));
+        }
+
+        // Format the timestamp according to the pattern, then localize the pattern
+        mDateFormat.applyPattern(DATE_FORMAT_PATTERN);
+        mDateFormat.applyLocalizedPattern(mDateFormat.toLocalizedPattern());
 
         // If the intent contains an update
         if (ActivityRecognitionResult.hasResult(intent)) {
 
             // Get the update
             ActivityRecognitionResult result = ActivityRecognitionResult.extractResult(intent);
+
+            // Log the update
+            logActivityRecognitionResult(result);
 
             // Get the most probable activity from the list of activities in the update
             DetectedActivity mostProbableActivity = result.getMostProbableActivity();
@@ -62,25 +98,25 @@ public class ActivityRecognitionIntentService extends IntentService {
             int activityType = mostProbableActivity.getType();
 
             // Check to see if the repository contains a previous activity
-            if (!mPrefs.contains(KEY_PREVIOUS_ACTIVITY_TYPE)) {
+            if (!mPrefs.contains(ActivityUtils.KEY_PREVIOUS_ACTIVITY_TYPE)) {
 
                 // This is the first type an activity has been detected. Store the type
                 Editor editor = mPrefs.edit();
-                editor.putInt(KEY_PREVIOUS_ACTIVITY_TYPE, activityType);
+                editor.putInt(ActivityUtils.KEY_PREVIOUS_ACTIVITY_TYPE, activityType);
                 editor.commit();
 
-                // If the repository contains a type
+            // If the repository contains a type
             } else if (
-                // If the current type is "moving"
-                    isMoving(activityType)
+                       // If the current type is "moving"
+                       isMoving(activityType)
 
-                            &&
+                       &&
 
-                            // The activity has changed from the previous activity
-                            activityChanged(activityType)
+                       // The activity has changed from the previous activity
+                       activityChanged(activityType)
 
-                            // The confidence level for the current activity is > 50%
-                            && (confidence >= 50)) {
+                       // The confidence level for the current activity is > 50%
+                       && (confidence >= 50)) {
 
                 // Notify the user
                 sendNotification();
@@ -100,11 +136,11 @@ public class ActivityRecognitionIntentService extends IntentService {
 
         // Set the title, text, and icon
         builder.setContentTitle(getString(R.string.app_name))
-                .setContentText("Включите GPS")
-                .setSmallIcon(R.drawable.ic_launcher)
+               .setContentText(getString(R.string.turn_on_GPS))
+               //.setSmallIcon(R.drawable.ic_notification)
 
-                        // Get the Intent that starts the Location settings panel
-                .setContentIntent(getContentIntent());
+               // Get the Intent that starts the Location settings panel
+               .setContentIntent(getContentIntent());
 
         // Get an instance of the Notification Manager
         NotificationManager notifyManager = (NotificationManager)
@@ -113,48 +149,6 @@ public class ActivityRecognitionIntentService extends IntentService {
         // Build the notification and post it
         notifyManager.notify(0, builder.build());
     }
-
-    /**
-     * Map detected activity types to strings
-     *@param activityType The detected activity type
-     *@return A user-readable name for the type
-     */
-    private String getNameFromType(int activityType) {
-        switch(activityType) {
-            case DetectedActivity.IN_VEHICLE:
-                return "in_vehicle";
-            case DetectedActivity.ON_BICYCLE:
-                return "on_bicycle";
-            case DetectedActivity.ON_FOOT:
-                return "on_foot";
-            case DetectedActivity.STILL:
-                return "still";
-            case DetectedActivity.UNKNOWN:
-                return "unknown";
-            case DetectedActivity.TILTING:
-                return "tilting";
-        }
-        return "unknown";
-    }
-
-    /**
-     * Determine if an activity means that the user is moving.
-     *
-     * @param type The type of activity the user is doing (see DetectedActivity constants)
-     * @return true if the user seems to be moving from one location to another, otherwise false
-     */
-    private boolean isMoving(int type) {
-        switch (type) {
-            // These types mean that the user is probably not moving
-            case DetectedActivity.STILL :
-            case DetectedActivity.TILTING :
-            case DetectedActivity.UNKNOWN :
-                return false;
-            default:
-                return true;
-        }
-    }
-
     /**
      * Get a content Intent for the notification
      *
@@ -180,17 +174,84 @@ public class ActivityRecognitionIntentService extends IntentService {
     private boolean activityChanged(int currentType) {
 
         // Get the previous type, otherwise return the "unknown" type
-        int previousType = mPrefs.getInt(KEY_PREVIOUS_ACTIVITY_TYPE,
+        int previousType = mPrefs.getInt(ActivityUtils.KEY_PREVIOUS_ACTIVITY_TYPE,
                 DetectedActivity.UNKNOWN);
 
         // If the previous type isn't the same as the current type, the activity has changed
         if (previousType != currentType) {
             return true;
 
-            // Otherwise, it hasn't.
+        // Otherwise, it hasn't.
         } else {
             return false;
         }
     }
 
+    /**
+     * Determine if an activity means that the user is moving.
+     *
+     * @param type The type of activity the user is doing (see DetectedActivity constants)
+     * @return true if the user seems to be moving from one location to another, otherwise false
+     */
+    private boolean isMoving(int type) {
+        switch (type) {
+            // These types mean that the user is probably not moving
+            case DetectedActivity.STILL :
+            case DetectedActivity.TILTING :
+            case DetectedActivity.UNKNOWN :
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    /**
+     * Write the activity recognition update to the log file
+
+     * @param result The result extracted from the incoming Intent
+     */
+    private void logActivityRecognitionResult(ActivityRecognitionResult result) {
+        // Get all the probably activities from the updated result
+        for (DetectedActivity detectedActivity : result.getProbableActivities()) {
+
+            // Get the activity type, confidence level, and human-readable name
+            int activityType = detectedActivity.getType();
+            int confidence = detectedActivity.getConfidence();
+            String activityName = getNameFromType(activityType);
+
+            // Make a timestamp
+            String timeStamp = mDateFormat.format(new Date());
+
+            // Get the current log file or create a new one, then log the activity
+/*            LogFile.getInstance(getApplicationContext()).log(
+                timeStamp +
+                LOG_DELIMITER +
+                getString(R.string.log_message, activityType, activityName, confidence)
+            );*/
+        }
+    }
+
+    /**
+     * Map detected activity types to strings
+     *
+     * @param activityType The detected activity type
+     * @return A user-readable name for the type
+     */
+    private String getNameFromType(int activityType) {
+        switch(activityType) {
+            case DetectedActivity.IN_VEHICLE:
+                return "in_vehicle";
+            case DetectedActivity.ON_BICYCLE:
+                return "on_bicycle";
+            case DetectedActivity.ON_FOOT:
+                return "on_foot";
+            case DetectedActivity.STILL:
+                return "still";
+            case DetectedActivity.UNKNOWN:
+                return "unknown";
+            case DetectedActivity.TILTING:
+                return "tilting";
+        }
+        return "unknown";
+    }
 }

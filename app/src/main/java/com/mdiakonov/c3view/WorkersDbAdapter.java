@@ -142,7 +142,7 @@ public class WorkersDbAdapter {
         initialValues.put(L_NAME, l_name);
         initialValues.put(BIRTHDAY, birthday);
         initialValues.put(AVATR_URL, avatr_url);
-        initialValues.put("sds", specialty_id);
+        initialValues.put(SPECIALTY_ID, specialty_id);
         return mDb.insert(TABLE_WORKERS_NAME, null, initialValues);
     }
 

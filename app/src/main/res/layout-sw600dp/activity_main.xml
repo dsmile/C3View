@@ -16,22 +16,51 @@
             android:layout_width="0dp"
             android:layout_weight="1" />
 
-        <fragment
-            android:name="com.mdiakonov.c3view.DetailsFragment"
-            android:id="@+id/detail_fragment"
+        <FrameLayout
+            android:id="@+id/details_container"
             android:layout_height="match_parent"
             android:layout_width="0dp"
-            android:layout_weight="2" />
+            android:layout_weight="2">
+<!--
+            <fragment
+                android:name="com.mdiakonov.c3view.DetailsFragment"
+                android:id="@+id/details_fragment"
+                android:layout_height="match_parent"
+                android:layout_width="0dp"
+                android:layout_weight="2" />
+-->
+        </FrameLayout>
 
     </LinearLayout>
     <!-- The navigation drawer -->
-    <ListView android:id="@+id/left_drawer"
-              android:layout_width="240dp"
-              android:layout_height="match_parent"
-              android:layout_gravity="start"
-              android:choiceMode="singleChoice"
-              android:divider="@android:color/transparent"
-              android:dividerHeight="10dp"
-              android:background="#fff"/>
+    <RelativeLayout
+        android:id="@+id/left_drawer"
+        android:layout_width="240dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start">
+
+        <ListView android:id="@+id/left_drawer_list"
+                  android:layout_width="480dp"
+                  android:layout_height="match_parent"
+                  android:layout_gravity="start"
+                  android:choiceMode="singleChoice"
+                  android:divider="@android:color/transparent"
+                  android:dividerHeight="10dp"
+                  android:background="#fff"/>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true" >
+
+            <TextView
+                android:id="@+id/text_view2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Координаты" />
+
+        </RelativeLayout>
+    </RelativeLayout>
+
 
 </android.support.v4.widget.DrawerLayout>

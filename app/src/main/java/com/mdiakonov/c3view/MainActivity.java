@@ -1,7 +1,5 @@
 package com.mdiakonov.c3view;
 
-import android.content.Context;
-import android.content.Intent;
 import android.database.Cursor;
 
 import android.os.AsyncTask;
@@ -9,10 +7,7 @@ import android.os.Bundle;
 
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
-import android.support.v4.content.CursorLoader;
 import android.support.v4.widget.SimpleCursorAdapter;
-
-import java.util.List;
 
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
@@ -24,19 +19,14 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.view.ViewPager;
 import android.support.v4.widget.DrawerLayout;
-import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListAdapter;
-import android.widget.TextView;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -52,8 +42,6 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     final static int SPECIALTY_LOADER_ID = 2;
     // Callback'и для SPECIALTY_LOADER_ID
     private LoaderManager.LoaderCallbacks<Cursor> mSpecialtyListCallbacks;
-    // Адаптер для данных табов
-    SectionsPagerAdapter mSectionsPagerAdapter;
 
     ListAdapter sectionsListAdapter;
     SimpleCursorAdapter mDrawerAdapter;
@@ -69,19 +57,25 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     private static final String TAG = "MainActivity";
     PagerWithListFragment myListFragment;
     DetailsFragment myDetailFragment;
+    AboutFragment myAboutFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        View v = findViewById(R.id.phone_container);
-        if(v == null){
-            //it's run on tablet
-            isSinglePane = false;
-            // все фрагменты загружается из XML, нет необходимости делать это программно
+        // БД
+        dbHelper = new WorkersDbAdapter(this);
+        dbHelper.open();
 
-        } else {
+        // если база данных пуста, загружаем данные после запуска
+        if (dbHelper.getSpecialtyData().getCount() == 0) {
+            UpdateDatabase();
+        }
+
+
+        View v = findViewById(R.id.phone_container);
+        if(v != null){
             // it's run on phone
             // Load MyListFragment programmatically
             isSinglePane = true;
@@ -98,17 +92,25 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                 myListFragment.setArguments(getIntent().getExtras());
                 // Add the fragment to the 'fragment_container' FrameLayout
                 getSupportFragmentManager().beginTransaction()
-                    .add(R.id.phone_container, myListFragment).commit();
+                        .add(R.id.phone_container, myListFragment)
+                        .commit();
             }
-        }
+        } else {
+            //it's run on tablet
+            isSinglePane = false;
+            // все левый фрагмент загружается из XML, нет необходимости делать это программно
 
-        // БД
-        dbHelper = new WorkersDbAdapter(this);
-        dbHelper.open();
+            // However, if we're being restored from a previous state,
+            // then we don't need to do anything or else
+            // we could end up with overlapping fragments.
+            if (savedInstanceState == null) {
+                myAboutFragment = new AboutFragment();
+                myAboutFragment.setArguments(getIntent().getExtras());
 
-        // если база данных пуста, загружаем данные после запуска
-        if (dbHelper.getSpecialtyData().getCount() == 0) {
-            UpdateDatabase();
+                getSupportFragmentManager().beginTransaction()
+                        .add(R.id.details_container, myAboutFragment)
+                        .commit();
+            }
         }
 
 
@@ -125,6 +127,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         mDrawerList.setOnItemClickListener(new DrawerItemClickListener());
 
         mSpecialtyListCallbacks = this;
+
         LoaderManager lm = getSupportLoaderManager();
         lm.initLoader(SPECIALTY_LOADER_ID, null, mSpecialtyListCallbacks);
 
@@ -132,23 +135,20 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
 //        startActivity(newActivity);
     }
 
+    public WorkersDbAdapter getDbHelper() {
+        return dbHelper;
+    }
 
     public void onWorkerSelected(Bundle args) {
 
-        DetailsFragment detailsFrag = (DetailsFragment)
-                getSupportFragmentManager().findFragmentById(R.id.detail_fragment);
+       /* DetailsFragment detailsFrag = (DetailsFragment)
+                getSupportFragmentManager().findFragmentById(R.id.details_fragment);
+*/
 
-        // Create a new fragment and specify the planet to show based on position
-        if(detailsFrag == null){
-            /*
-             * The second fragment not yet loaded.
-             * Load MyDetailFragment by FragmentTransaction, and pass
-             * data from current fragment to second fragment via bundle.
-             */
-            myDetailFragment = new DetailsFragment();
-            myDetailFragment.setArguments(args);
-            // Replace whatever is in the fragment_container view with this fragment,
-            // and add the transaction to the back stack so the user can navigate back
+
+        if (isSinglePane) {
+                // Replace whatever is in the fragment_container view with this fragment,
+                // and add the transaction to the back stack so the user can navigate back
             FragmentTransaction fragmentTransaction =
                     getSupportFragmentManager().beginTransaction();
             fragmentTransaction.replace(R.id.phone_container, myDetailFragment);
@@ -157,10 +157,25 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         } else {
             //get reference to MyDetailFragment
             // If article frag is available, we're in two-pane layout...
+            // Create a new fragment and specify the planet to show based on position
+            if(myDetailFragment == null) {
+            /*
+             * The second fragment not yet loaded.
+             * Load MyDetailFragment by FragmentTransaction, and pass
+             * data from current fragment to second fragment via bundle.
+             */
+
+                myDetailFragment = new DetailsFragment();
+                myDetailFragment.setArguments(args);
+
+                FragmentTransaction fragmentTransaction =
+                    getSupportFragmentManager().beginTransaction();
+                fragmentTransaction.replace(R.id.details_container, myDetailFragment);
+                fragmentTransaction.commit();
+            }
 
             // Call a method in the DetailsFragment to update its content
-            detailsFrag.updateDetail(args);
-            myDetailFragment = null;
+            myDetailFragment.updateDetail(args);
         }
     }
 
@@ -207,58 +222,6 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         }
         return super.onOptionsItemSelected(item);
     }
-
-    /**
-     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
-     * one of the sections/tabs/pages.
-     */
-    public class SectionsPagerAdapter extends FragmentPagerAdapter {
-
-        private int pageCount;
-        private Cursor cursor = null;
-
-        public SectionsPagerAdapter(FragmentManager fm) {
-            super(fm);
-        }
-
-        @Override
-        public Fragment getItem(int position) {
-            if (cursor != null) {
-                Fragment fragment = new WorkersListFragment();
-                Bundle args = new Bundle();
-                cursor.moveToPosition(position);
-                args.putInt("SPEC_ID", cursor.getInt(1));
-                fragment.setArguments(args);
-                return fragment;
-            } else {
-                return null;
-            }
-        }
-
-        @Override
-        public int getCount() {
-            if (cursor != null) {
-                return cursor.getCount();
-            } else {
-                return 0;
-            }
-        }
-
-        @Override
-        public CharSequence getPageTitle(int position) {
-            if (cursor != null) {
-                cursor.moveToPosition(position);
-                return cursor.getString(0);
-            } else {
-                return "Err";
-            }
-        }
-
-        public void SetPageInfo(Cursor data) {
-            cursor = data;
-        }
-    }
-
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         // Now create and return a CursorLoader that will take care of
@@ -288,16 +251,18 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         mDrawerAdapter.swapCursor(null);
     }
 
-    private class UpdateDatabase extends AsyncTask<String, Long, Long> {
+    private class UpdateDatabase extends AsyncTask<String, Void, Void> {
         private String Content = null;
         private String Error = null;
 
+        @Override
         protected void onPreExecute() {
             //Start Progress Dialog (Message)
             Toast.makeText(MainActivity.this, R.string.update_db_start, Toast.LENGTH_SHORT).show();
         }
 
-        protected Long doInBackground(String... urls) {
+        @Override
+        protected Void doInBackground(String... urls) {
             BufferedReader reader=null;
             // Send data
             try {
@@ -345,14 +310,8 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                     // TODO
                 }
             }
-            return 0l;
-        }
 
-        protected void onPostExecute(Long result) {
-            if (Error != null) {
-                Toast.makeText(MainActivity.this, R.string.update_db_error, Toast.LENGTH_SHORT).show();
-                Log.w(TAG, "Output: "+Error);
-            } else {
+            if (Error == null) {
                 // Файл с данными получен, можно очистить локальную БД
                 dbHelper.ClearTables();
                 // Разбор файла с данными
@@ -363,7 +322,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                     JSONArray jsonMainNode = jsonResponse.optJSONArray("response");
 
                     int lengthJsonArr = jsonMainNode.length();
-                    for (int i=0; i < lengthJsonArr; i++) {
+                    for (int i = 0; i < lengthJsonArr; i++) {
                         JSONObject jsonChildNode = jsonMainNode.getJSONObject(i);
 
                         String f_name = jsonChildNode.optString("f_name").toLowerCase();
@@ -393,19 +352,26 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
                 } catch (JSONException e) {
                     dbHelper.endTransaction();
                     e.printStackTrace();
-                    Toast.makeText(MainActivity.this, R.string.update_db_error, Toast.LENGTH_SHORT).show();
-                    Error = "Db Insert Error";
+                    Error = "Db insert or JSON parsing error";
                 }
                 dbHelper.endTransaction();
-
-                if (Error == null) {
-                    UpdateListView();
-                    Toast.makeText(MainActivity.this, R.string.update_db_end, Toast.LENGTH_SHORT).show();
-                }
             }
+            return null;
         }
 
-        protected void onCancelled (Long result) {
+        @Override
+        protected void onPostExecute(Void result) {
+            if (Error == null) {
+                Toast.makeText(MainActivity.this, R.string.update_db_end, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(MainActivity.this, R.string.update_db_error, Toast.LENGTH_SHORT).show();
+                Log.w(TAG, "Output: "+Error);
+            }
+            UpdateListView();
+        }
+
+        @Override
+        protected void onCancelled () {
             // TODO
         }
     }
@@ -428,11 +394,9 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
             PagerWithListFragment pagerFrag = (PagerWithListFragment)
                     getSupportFragmentManager().findFragmentById(R.id.list_fragment);
             if (pagerFrag != null) {
-                // If article frag is available, we're in two-pane layout...
-
-                // Call a method in the ArticleFragment to update its content
+                // If pagerFrag is available, we're in two-pane layout...
+                // Call a method in the pagerFrag to update its content
                 pagerFrag.OnDbChanges();
-
             }
         }
     }
