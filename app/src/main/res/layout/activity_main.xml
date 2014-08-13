@@ -10,35 +10,8 @@
         android:layout_height="match_parent" >
     </FrameLayout>
 
-
     <!-- The navigation drawer -->
-    <RelativeLayout
-        android:id="@+id/left_drawer"
-        android:layout_width="240dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start">
-
-        <ListView android:id="@+id/left_drawer_list"
-                  android:layout_width="240dp"
-                  android:layout_height="match_parent"
-                  android:layout_gravity="start"
-                  android:choiceMode="singleChoice"
-                  android:divider="@android:color/transparent"
-                  android:dividerHeight="10dp"
-                  android:background="#fff"/>
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true" >
-
-            <TextView
-                android:id="@+id/text_view2"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Координаты" />
-
-        </RelativeLayout>
-    </RelativeLayout>
+    <include android:id="@+id/left_drawer"
+             layout="@layout/drawer_layout" />
 
 </android.support.v4.widget.DrawerLayout>

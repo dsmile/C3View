@@ -54,8 +54,6 @@ public class WorkersListFragment extends ListFragment
     // Если не пустая строка (или null) - фильтр по именам работников в списке
     String mCurFilter;
 
-    PagerTabStrip mPagerTabStrip;
-
     Context context;
     WorkersDbAdapter dbHelper;
 
@@ -110,9 +108,7 @@ public class WorkersListFragment extends ListFragment
          * You'll need to cast it to an ActionBarActivity then make the call to getSupportActionBar().
          */
         //((ActionBarActivity)getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-
-        dbHelper = new WorkersDbAdapter(context);
-        dbHelper.open();
+        dbHelper = ((MainActivity)this.getActivity()).getDbHelper();
 
         // список названий необходимых столбцов из БД
         String[] listDataColumns = new String[] { WorkersDbAdapter.F_NAME, WorkersDbAdapter.L_NAME,
@@ -291,7 +287,7 @@ public class WorkersListFragment extends ListFragment
         }
     }
     @Override
-    // TODO
+    // TODO Зачем это?
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
 
@@ -308,6 +304,5 @@ public class WorkersListFragment extends ListFragment
     @Override
     public void onDestroy() {
         super.onDestroy();
-        dbHelper.close();
     }
 }

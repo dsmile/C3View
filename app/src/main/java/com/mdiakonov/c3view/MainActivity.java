@@ -127,7 +127,6 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
         mDrawerList.setOnItemClickListener(new DrawerItemClickListener());
 
         mSpecialtyListCallbacks = this;
-
         LoaderManager lm = getSupportLoaderManager();
         lm.initLoader(SPECIALTY_LOADER_ID, null, mSpecialtyListCallbacks);
 
@@ -140,11 +139,24 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     }
 
     public void onWorkerSelected(Bundle args) {
+        if(myDetailFragment == null) {
+            /*
+             * The second fragment not yet loaded.
+             * Load MyDetailFragment by FragmentTransaction, and pass
+             * data from current fragment to second fragment via bundle.
+             */
 
-       /* DetailsFragment detailsFrag = (DetailsFragment)
-                getSupportFragmentManager().findFragmentById(R.id.details_fragment);
-*/
+            myDetailFragment = new DetailsFragment();
+            myDetailFragment.setArguments(args);
 
+            if (!isSinglePane) {
+                FragmentTransaction fragmentTransaction =
+                        getSupportFragmentManager().beginTransaction();
+                fragmentTransaction.replace(R.id.details_container, myDetailFragment);
+                fragmentTransaction.addToBackStack(null);
+                fragmentTransaction.commit();
+            }
+        }
 
         if (isSinglePane) {
                 // Replace whatever is in the fragment_container view with this fragment,
@@ -155,25 +167,6 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
             fragmentTransaction.addToBackStack(null);
             fragmentTransaction.commit();
         } else {
-            //get reference to MyDetailFragment
-            // If article frag is available, we're in two-pane layout...
-            // Create a new fragment and specify the planet to show based on position
-            if(myDetailFragment == null) {
-            /*
-             * The second fragment not yet loaded.
-             * Load MyDetailFragment by FragmentTransaction, and pass
-             * data from current fragment to second fragment via bundle.
-             */
-
-                myDetailFragment = new DetailsFragment();
-                myDetailFragment.setArguments(args);
-
-                FragmentTransaction fragmentTransaction =
-                    getSupportFragmentManager().beginTransaction();
-                fragmentTransaction.replace(R.id.details_container, myDetailFragment);
-                fragmentTransaction.commit();
-            }
-
             // Call a method in the DetailsFragment to update its content
             myDetailFragment.updateDetail(args);
         }
@@ -190,7 +183,7 @@ public class MainActivity extends ActionBarActivity implements LoaderManager.Loa
     private void selectItem(int position) {
         // Highlight the selected item, update the title, and close the drawer
         mDrawerList.setItemChecked(position, true);
-        mDrawerLayout.closeDrawer(mDrawerList);
+        mDrawerLayout.closeDrawers();
 
         if (myListFragment != null) {
             getSupportFragmentManager().popBackStack();
